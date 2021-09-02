@@ -63,17 +63,20 @@ class Robot_FW():
 		sim.simxSetJointTargetPosition(self.clientID,self.gjoint1,position*-0.5,sim.simx_opmode_oneshot)
 	def pick_up(self,objectHandle,sensorHandle,mode):
 		if mode==1:#Pega o cubo do chão
+			self.arm_position(np.array([0,-30,-30,-30,0])*np.pi/180)
 			self.open_grip(True)
 			self.velocity(np.array([-60,-60,-60,-60])*np.pi/180)
-			r=sim.simxReadProximitySensor(self.clientID,sensorHandle,sim.simx_opmode_blocking)
-			while(np.linalg.norm(r[2])>0.2):
-				r=sim.simxReadProximitySensor(self.clientID,sensorHandle,sim.simx_opmode_blocking)
+			object_position = self.get_position(objectHandle,self.joint1)
+			while(object_position[1]>0.35):
+				object_position = self.get_position(objectHandle,self.joint1)
 			self.velocity(np.array([0,0,0,0])*np.pi/180)
-			r_EF=[0,False,0,0,0]
-			while (r_EF[1]!=True):
+			r_EF=False
+			while (r_EF!=True):
 				self.open_grip(True)
 				self.velocity(np.array([0,0,0,0])*np.pi/180)
 				object_position = self.get_position(objectHandle,self.joint1)
+				if object_position[1]==0:
+					object_position[1]=0.00000001
 				theta=np.arctan((-object_position[2])/(object_position[1]))
 				self.arm_position(np.array([theta,0,0,0,0]))
 				object_position = self.get_position(objectHandle,self.joint2)
@@ -81,7 +84,7 @@ class Robot_FW():
 				Q=OptimizationFunction([object_position[0],np.sqrt(object_position[1]**2+object_position[2]**2),0.001],[0.15497663617134094, 0.134843647480011, 0.1936628818511963],-180,[0,0,0])
 				self.arm_position(np.array([theta*180/np.pi,Q[1],Q[2],Q[3],0])*np.pi/180)
 				time.sleep(1)
-				r_EF=sim.simxReadProximitySensor(self.clientID,self.sensorHandle_EF,sim.simx_opmode_streaming)
+				r_EF=self.prox_sensor(objectHandle,0.02)
 			self.open_grip(False)
 			time.sleep(1)
 			self.arm_position(np.array([0,0,0,0,0])*np.pi/180)
@@ -99,6 +102,8 @@ class Robot_FW():
 				self.open_grip(True)
 				self.velocity(np.array([0,0,0,0])*np.pi/180)
 				object_position = self.get_position(objectHandle,self.joint1)
+				if object_position[1]==0:
+					object_position[1]=0.00000001
 				theta=np.arctan((-object_position[2])/(object_position[1]))
 				self.arm_position(np.array([theta*180/np.pi,-60,-30,0,0])*np.pi/180)
 				time.sleep(1)
@@ -125,6 +130,8 @@ class Robot_FW():
 				self.open_grip(True)
 				self.velocity(np.array([0,0,0,0])*np.pi/180)
 				object_position = self.get_position(objectHandle,self.joint1)
+				if object_position[1]==0:
+					object_position[1]=0.00000001
 				theta=np.arctan((-object_position[2])/(object_position[1]))
 				self.arm_position(np.array([theta,0,0,0,0]))
 				object_position = self.get_position(objectHandle,self.joint2)
@@ -136,7 +143,7 @@ class Robot_FW():
 			time.sleep(1)
 			self.arm_position(np.array([0,0,0,0,0])*np.pi/180)
 
-	def put_down(self,dummyHandle,mode):
+	def put_down(self,dummyHandle,mode,n_color):
 		if mode==1:#Coloca o cubo na prateleira de baixo
 			dummy_position = self.get_position(dummyHandle,self.joint2)
 			self.velocity(np.array([-60,-60,-60,-60])*np.pi/180)
@@ -157,12 +164,12 @@ class Robot_FW():
 			print("Teste",dummy_position)
 			self.velocity(np.array([0,0,0,0])*np.pi/180)
 			dummy_position = self.get_position(dummyHandle,self.joint2)
-			Q=OptimizationFunction(dummy_position,[0.15497663617134094, 0.134843647480011, 0.1936628818511963],-150,[0,0.03,0])
+			Q=OptimizationFunction(dummy_position,[0.15497663617134094, 0.134843647480011, 0.1936628818511963],-120,[-0.05*n_color-0.02,0,0])
 			self.arm_position(np.array([Q[0],Q[1],Q[2],Q[3],0])*np.pi/180)
 			time.sleep(1)
 			self.open_grip(True)
 			time.sleep(1)
-			self.arm_position(np.array([0,-60,-60,-60,0])*np.pi/180)
+			self.arm_position(np.array([0,-30,-30,-30,0])*np.pi/180)
 		if mode==2:#Coloca o cubo na prateleira de cima
 			dummy_position = self.get_position(dummyHandle,self.joint2)
 			self.arm_position(np.array([0,0,0,0,0])*np.pi/180)
@@ -172,7 +179,7 @@ class Robot_FW():
 			self.velocity(np.array([0,0,0,0])*np.pi/180)
 			dummy_position = self.get_position(dummyHandle,self.joint2)
 			print("Teste",dummy_position)
-			Q=OptimizationFunction(dummy_position,[0.15497663617134094, 0.134843647480011, 0.1936628818511963],-90,[0,0,0])
+			Q=OptimizationFunction(dummy_position,[0.15497663617134094, 0.134843647480011, 0.1936628818511963],-90,[-0.05*n_color,0,0])
 			self.arm_position(np.array([Q[0],Q[1],Q[2],Q[3],0])*np.pi/180)
 			time.sleep(1)
 			self.open_grip(True)
@@ -188,7 +195,10 @@ class Robot_FW():
 		time.sleep(0.1)
 		rC,p2 = sim.simxGetObjectPosition(self.clientID,object2,-1,sim.simx_opmode_buffer)
 		return [p2[2]-p1[2],p2[1]-p1[1],p2[0]-p1[0]]
-
+	def prox_sensor(self,objectHandle,distancia):
+		p=self.get_position(objectHandle,self.gjoint1)
+		d=np.linalg.norm(p)
+		return d<distancia
 	def GetColors(self,clientID):
 		buffer = bytearray()
 		answer=sim.simxCallScriptFunction(clientID,'Floor_visible',
