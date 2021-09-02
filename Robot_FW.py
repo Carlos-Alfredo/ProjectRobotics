@@ -94,11 +94,11 @@ class Robot_FW():
 			self.open_grip(True)
 			self.velocity(np.array([-60,-60,-60,-60])*np.pi/180)
 			object_position = self.get_position(objectHandle,self.joint2)
-			while(object_position[1]>0.45):
+			while(object_position[1]>0.40):
 				object_position = self.get_position(objectHandle,self.joint2)
 			self.velocity(np.array([0,0,0,0])*np.pi/180)
-			r_EF=[0,False,0,0,0]
-			while (r_EF[1]!=True):
+			r_EF=False
+			while (r_EF!=True):
 				self.open_grip(True)
 				self.velocity(np.array([0,0,0,0])*np.pi/180)
 				object_position = self.get_position(objectHandle,self.joint1)
@@ -112,7 +112,7 @@ class Robot_FW():
 				print("->",Q)
 				self.arm_position(np.array([theta*180/np.pi,Q[1],Q[2],Q[3],0])*np.pi/180)
 				time.sleep(1)
-				r_EF=sim.simxReadProximitySensor(self.clientID,self.sensorHandle_EF,sim.simx_opmode_streaming)
+				r_EF=self.prox_sensor(objectHandle,0.02)
 			self.open_grip(False)
 			time.sleep(1)
 			self.arm_position(np.array([0,-45,-45,0,0])*np.pi/180)
@@ -125,8 +125,8 @@ class Robot_FW():
 			while(object_position[1]>0.4):
 				object_position = self.get_position(objectHandle,self.joint2)
 			self.velocity(np.array([0,0,0,0])*np.pi/180)
-			r_EF=[0,False,0,0,0]
-			while (r_EF[1]!=True):
+			r_EF=False
+			while (r_EF!=True):
 				self.open_grip(True)
 				self.velocity(np.array([0,0,0,0])*np.pi/180)
 				object_position = self.get_position(objectHandle,self.joint1)
@@ -138,7 +138,7 @@ class Robot_FW():
 				Q=OptimizationFunction([object_position[0],np.sqrt(object_position[1]**2+object_position[2]**2),0.001],[0.15497663617134094, 0.134843647480011, 0.1936628818511963],-90,[0,0,0])
 				self.arm_position(np.array([theta*180/np.pi,Q[1],Q[2],Q[3],0])*np.pi/180)
 				time.sleep(1)
-				r_EF=sim.simxReadProximitySensor(self.clientID,self.sensorHandle_EF,sim.simx_opmode_streaming)
+				r_EF=self.prox_sensor(objectHandle,0.02)
 			self.open_grip(False)
 			time.sleep(1)
 			self.arm_position(np.array([0,0,0,0,0])*np.pi/180)
@@ -164,7 +164,7 @@ class Robot_FW():
 			print("Teste",dummy_position)
 			self.velocity(np.array([0,0,0,0])*np.pi/180)
 			dummy_position = self.get_position(dummyHandle,self.joint2)
-			Q=OptimizationFunction(dummy_position,[0.15497663617134094, 0.134843647480011, 0.1936628818511963],-120,[-0.05*n_color-0.02,0,0])
+			Q=OptimizationFunction(dummy_position,[0.15497663617134094, 0.134843647480011, 0.1936628818511963],-150,[-0.05*n_color-0.02,0.03,0])
 			self.arm_position(np.array([Q[0],Q[1],Q[2],Q[3],0])*np.pi/180)
 			time.sleep(1)
 			self.open_grip(True)
