@@ -7,6 +7,7 @@ from inverse_kin import OptimizationFunction
 class Robot_FW():
 	def __init__(self,clientID,RobotName):
 		self.clientID = clientID
+		returnCode0,self.sensorHandle_EF = sim.simxGetObjectHandle(clientID,'sensor_EF',sim.simx_opmode_blocking)
 		returnCode1,self.joint1 = sim.simxGetObjectHandle(clientID,'YBAJ0',sim.simx_opmode_blocking)
 		returnCode2,self.joint2 = sim.simxGetObjectHandle(clientID,'YBAJ1',sim.simx_opmode_blocking)
 		returnCode3,self.joint3 = sim.simxGetObjectHandle(clientID,'YBAJ2',sim.simx_opmode_blocking)
@@ -30,13 +31,13 @@ class Robot_FW():
 		#sim.simxPauseCommunication(self.clientID,True)
 
 		sim.simxSetJointTargetVelocity(self.clientID, self.eixo_rl,
-										   rl,sim.simx_opmode_oneshot)
+										   rl,sim.simx_opmode_streaming)
 		sim.simxSetJointTargetVelocity(self.clientID, self.eixo_rr, 
-                                            rr,sim.simx_opmode_oneshot)
+                                            rr,sim.simx_opmode_streaming)
 		sim.simxSetJointTargetVelocity(self.clientID, self.eixo_fl, 
-                                            fl,sim.simx_opmode_oneshot)
+                                            fl,sim.simx_opmode_streaming)
 		sim.simxSetJointTargetVelocity(self.clientID, self.eixo_fr, 
-                                            fr,sim.simx_opmode_oneshot)
+                                            fr,sim.simx_opmode_streaming)
 		#sim.simxPauseCommunication(self.clientID,False)
 
 	def arm_position(self,theta):
@@ -62,51 +63,79 @@ class Robot_FW():
 		sim.simxSetJointTargetPosition(self.clientID,self.gjoint1,position*-0.5,sim.simx_opmode_oneshot)
 	def pick_up(self,objectHandle,sensorHandle,mode):
 		if mode==1:#Pega o cubo do chão
+			self.open_grip(True)
 			self.velocity(np.array([-60,-60,-60,-60])*np.pi/180)
 			r=sim.simxReadProximitySensor(self.clientID,sensorHandle,sim.simx_opmode_blocking)
 			while(np.linalg.norm(r[2])>0.2):
 				r=sim.simxReadProximitySensor(self.clientID,sensorHandle,sim.simx_opmode_blocking)
 			self.velocity(np.array([0,0,0,0])*np.pi/180)
-			object_position = self.get_position(objectHandle,self.joint2)
-			print("Teste",object_position)
-			Q=OptimizationFunction(object_position,[0.15497663617134094, 0.134843647480011, 0.1936628818511963],-180,[0,0,0])
-			self.arm_position(np.array([Q[0],Q[1],Q[2],Q[3],0])*np.pi/180)
-			time.sleep(1)
+			r_EF=[0,False,0,0,0]
+			while (r_EF[1]!=True):
+				self.open_grip(True)
+				self.velocity(np.array([0,0,0,0])*np.pi/180)
+				object_position = self.get_position(objectHandle,self.joint1)
+				theta=np.arctan((-object_position[2])/(object_position[1]))
+				self.arm_position(np.array([theta,0,0,0,0]))
+				object_position = self.get_position(objectHandle,self.joint2)
+				print("Teste",object_position)
+				Q=OptimizationFunction([object_position[0],np.sqrt(object_position[1]**2+object_position[2]**2),0],[0.15497663617134094, 0.134843647480011, 0.1936628818511963],-180,[0,0,0])
+				self.arm_position(np.array([theta*180/np.pi,Q[1],Q[2],Q[3],0])*np.pi/180)
+				time.sleep(1)
+				r_EF=sim.simxReadProximitySensor(self.clientID,self.sensorHandle_EF,sim.simx_opmode_streaming)
 			self.open_grip(False)
 			time.sleep(1)
 			self.arm_position(np.array([0,0,0,0,0])*np.pi/180)
+             
 		if mode==2:#Pega o cubo da prateleira de baixo
 			self.arm_position(np.array([0,-60,-30,-30,0])*np.pi/180)
+			self.open_grip(True)
 			self.velocity(np.array([-60,-60,-60,-60])*np.pi/180)
 			object_position = self.get_position(objectHandle,self.joint2)
 			while(object_position[1]>0.45):
 				object_position = self.get_position(objectHandle,self.joint2)
 			self.velocity(np.array([0,0,0,0])*np.pi/180)
-			object_position = self.get_position(objectHandle,self.joint2)
-			print("->",object_position)
-			self.arm_position(np.array([0,-60,-30,0,0])*np.pi/180)
-			time.sleep(1)
-			Q=OptimizationFunction(object_position,[0.15497663617134094, 0.134843647480011, 0.1936628818511963],-150,[0,0,0])
-			self.arm_position(np.array([Q[0],Q[1],Q[2],Q[3],0])*np.pi/180)
-			time.sleep(1)
+			r_EF=[0,False,0,0,0]
+			while (r_EF[1]!=True):
+				self.open_grip(True)
+				self.velocity(np.array([0,0,0,0])*np.pi/180)
+				object_position = self.get_position(objectHandle,self.joint1)
+				theta=np.arctan((-object_position[2])/(object_position[1]))
+				self.arm_position(np.array([theta*180/np.pi,-60,-30,0,0])*np.pi/180)
+				time.sleep(1)
+				object_position = self.get_position(objectHandle,self.joint2)
+				Q=OptimizationFunction([object_position[0],np.sqrt(object_position[1]**2+object_position[2]**2),0],[0.15497663617134094, 0.134843647480011, 0.1936628818511963],-150,[0,0,0])
+				print("->",Q)
+				self.arm_position(np.array([theta*180/np.pi,Q[1],Q[2],Q[3],0])*np.pi/180)
+				time.sleep(1)
+				r_EF=sim.simxReadProximitySensor(self.clientID,self.sensorHandle_EF,sim.simx_opmode_streaming)
 			self.open_grip(False)
 			time.sleep(1)
 			self.arm_position(np.array([0,-45,-45,0,0])*np.pi/180)
+
 		if mode==3:#Pega o cubo da prateleira de cima
 			self.arm_position(np.array([0,0,0,0,0])*np.pi/180)
+			self.open_grip(True)
 			self.velocity(np.array([-60,-60,-60,-60])*np.pi/180)
 			object_position = self.get_position(objectHandle,self.joint2)
 			while(object_position[1]>0.4):
 				object_position = self.get_position(objectHandle,self.joint2)
 			self.velocity(np.array([0,0,0,0])*np.pi/180)
-			object_position = self.get_position(objectHandle,self.joint2)
-			print("->",object_position)
-			Q=OptimizationFunction(object_position,[0.15497663617134094, 0.134843647480011, 0.1936628818511963],-90,[0,0,0])
-			self.arm_position(np.array([Q[0],Q[1],Q[2],Q[3],0])*np.pi/180)
-			time.sleep(1)
+			r_EF=[0,False,0,0,0]
+			while (r_EF[1]!=True):
+				self.open_grip(True)
+				self.velocity(np.array([0,0,0,0])*np.pi/180)
+				object_position = self.get_position(objectHandle,self.joint1)
+				theta=np.arctan((-object_position[2])/(object_position[1]))
+				self.arm_position(np.array([theta,0,0,0,0]))
+				object_position = self.get_position(objectHandle,self.joint2)
+				Q=OptimizationFunction([object_position[0],np.sqrt(object_position[1]**2+object_position[2]**2),0],[0.15497663617134094, 0.134843647480011, 0.1936628818511963],-90,[0,0,0])
+				self.arm_position(np.array([theta*180/np.pi,Q[1],Q[2],Q[3],0])*np.pi/180)
+				time.sleep(1)
+				r_EF=sim.simxReadProximitySensor(self.clientID,self.sensorHandle_EF,sim.simx_opmode_streaming)
 			self.open_grip(False)
 			time.sleep(1)
 			self.arm_position(np.array([0,0,0,0,0])*np.pi/180)
+
 	def put_down(self,dummyHandle,mode):
 		if mode==1:#Coloca o cubo na prateleira de baixo
 			dummy_position = self.get_position(dummyHandle,self.joint2)
