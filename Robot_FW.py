@@ -159,7 +159,7 @@ class Robot_FW():
 			time.sleep(1)
 			self.velocity(np.array([-60,-60,-60,-60])*np.pi/180)
 			dummy_position = self.get_position(dummyHandle,self.joint2)
-			while(dummy_position[1]>0.45):
+			while(dummy_position[1]>0.35):
 				dummy_position = self.get_position(dummyHandle,self.joint2)
 			print("Teste",dummy_position)
 			self.velocity(np.array([0,0,0,0])*np.pi/180)
@@ -169,7 +169,7 @@ class Robot_FW():
 			time.sleep(1)
 			self.open_grip(True)
 			time.sleep(1)
-			self.arm_position(np.array([0,-30,-30,-30,0])*np.pi/180)
+			self.arm_position(np.array([0,-45,-45,0,0])*np.pi/180)
 		if mode==2:#Coloca o cubo na prateleira de cima
 			dummy_position = self.get_position(dummyHandle,self.joint2)
 			self.arm_position(np.array([0,0,0,0,0])*np.pi/180)
