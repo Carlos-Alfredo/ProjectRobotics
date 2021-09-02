@@ -178,6 +178,8 @@ class Robot_FW():
 			self.open_grip(True)
 			time.sleep(1)
 			self.arm_position(np.array([0,0,0,0,0])*np.pi/180)
+		
+			
 	def get_position(self,object1,object2):
 		rC,p1 = sim.simxGetObjectPosition(self.clientID,object1,-1,sim.simx_opmode_streaming)
 		time.sleep(0.1)
@@ -186,3 +188,10 @@ class Robot_FW():
 		time.sleep(0.1)
 		rC,p2 = sim.simxGetObjectPosition(self.clientID,object2,-1,sim.simx_opmode_buffer)
 		return [p2[2]-p1[2],p2[1]-p1[1],p2[0]-p1[0]]
+
+	def GetColors(self,clientID):
+		buffer = bytearray()
+		answer=sim.simxCallScriptFunction(clientID,'Floor_visible',
+                                         sim.sim_scripttype_childscript,'coroutineMain',
+                                         [],[],[],buffer,sim.simx_opmode_blocking)
+		self.color_cube = answer[4].decode("utf-8")
